@@ -19,6 +19,8 @@ interface MonthEntry {
 interface SKUEntry {
 	SKU: string;
 	name: string;
+	price: string;
+	cost: string;
 }
 
 interface StoreEntry {
@@ -134,7 +136,12 @@ export const getPlanningData = async (): Promise<planningDataType[]> => {
 			// Initialize store & SKU entry
 			planning = {
 				Store: { Store: plan.storeId, name: plan.store.label },
-				SKU: { SKU: plan.skuId, name: plan.sku.label },
+				SKU: {
+					SKU: plan.skuId,
+					name: plan.sku.label,
+					price: String(plan.sku.price),
+					cost: String(plan.sku.cost),
+				},
 				months: [],
 			};
 
@@ -207,7 +214,12 @@ export const getStorePlanningData = async (
 			// Initialize store & SKU entry
 			planning = {
 				Store: { Store: plan.storeId, name: plan.store.label },
-				SKU: { SKU: plan.skuId, name: plan.sku.label },
+				SKU: {
+					SKU: plan.skuId,
+					name: plan.sku.label,
+					price: String(plan.sku.price),
+					cost: String(plan.sku.cost),
+				},
 				months: [],
 			};
 
