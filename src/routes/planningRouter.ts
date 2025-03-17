@@ -4,7 +4,7 @@ import { authenticate } from "../middlewares/authMiddleware";
 
 const router = Router();
 
-router.get("/", PlanningController.getAllPlanningReport);
+router.get("/store", PlanningController.getAllPlanningReport);
 router.post("/store", PlanningController.getStorePlanningReport);
 
 export default router;

@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Planning, Store, SKU } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -33,14 +33,12 @@ interface planningDataType {
 	months: MonthEntry[];
 }
 
-interface PreviousGM {
-	gmDollars: number;
-	gmPercentage: number;
-}
+type RawData = Planning & {
+	store: Store;
+	sku: SKU;
+};
 
-/**
- * Converts a week number (e.g., "W01") to its corresponding month name.
- */
+// Converts a week number (e.g., "W01") to its corresponding month name
 const getMonthFromWeek = (weekNO: number): string => {
 	const weekToMonthMap: { [key: number]: string } = {
 		1: "Feb",
@@ -116,15 +114,7 @@ const allMonths = [
 	{ name: "Jan", weeks: [49, 50, 51, 52] },
 ];
 
-/**
- * Fetches and processes planning data, grouping it by store, SKU, and month.
- */
-export const getPlanningData = async (): Promise<planningDataType[]> => {
-	const planningData = await prisma.planning.findMany({
-		include: { store: true, sku: true },
-		orderBy: [{ storeId: "asc" }, { skuId: "asc" }, { week: "asc" }],
-	});
-
+const stuctureData = (planningData: RawData[]) => {
 	// Group data by store & SKU
 	const dataMap = new Map<string, planningDataType>();
 
@@ -194,6 +184,14 @@ export const getPlanningData = async (): Promise<planningDataType[]> => {
 	return Array.from(dataMap.values());
 };
 
+export const getPlanningData = async (): Promise<planningDataType[]> => {
+	const planningData = await prisma.planning.findMany({
+		include: { store: true, sku: true },
+		orderBy: [{ storeId: "asc" }, { skuId: "asc" }, { week: "asc" }],
+	});
+	return stuctureData(planningData);
+};
+
 export const getStorePlanningData = async (
 	store: string
 ): Promise<planningDataType[]> => {
@@ -202,72 +200,5 @@ export const getStorePlanningData = async (
 		include: { store: true, sku: true },
 		orderBy: [{ storeId: "asc" }, { skuId: "asc" }, { week: "asc" }],
 	});
-
-	// Group data by store & SKU
-	const dataMap = new Map<string, planningDataType>();
-
-	for (const plan of planningData) {
-		const storeKey = `${plan.storeId}-${plan.skuId}`;
-
-		let planning = dataMap.get(storeKey);
-		if (!planning) {
-			// Initialize store & SKU entry
-			planning = {
-				Store: { Store: plan.storeId, name: plan.store.label },
-				SKU: {
-					SKU: plan.skuId,
-					name: plan.sku.label,
-					price: String(plan.sku.price),
-					cost: String(plan.sku.cost),
-				},
-				months: [],
-			};
-
-			// Create empty months and weeks
-			allMonths.forEach((month) => {
-				planning!.months.push({
-					monthName: month.name,
-					weeks: month.weeks.map((week) => ({
-						weekNO: week,
-						salesUnits: 0,
-						salesDollars: 0,
-						costDollars: 0,
-						gmDollars: 0,
-						gmPercentage: 0,
-					})),
-				});
-			});
-
-			dataMap.set(storeKey, planning);
-		}
-
-		// Get the correct month entry
-		const weekNumber = parseInt(plan.week.replace("W", ""), 10);
-		const monthName = getMonthFromWeek(weekNumber);
-		const monthEntry = planning.months.find((m) => m.monthName === monthName);
-
-		// Calculate values
-		const salesDollars = parseFloat(
-			(Number(plan.units) * Number(plan.sku.price)).toFixed(2)
-		);
-		const costDollars = parseFloat(
-			(Number(plan.units) * Number(plan.sku.cost)).toFixed(2)
-		);
-		const gmDollars = parseFloat((salesDollars - costDollars).toFixed(2));
-		const gmPercentage =
-			Number(plan.units) > 0 ? (gmDollars / salesDollars) * 100 : 0;
-
-		// Update the correct week
-		const weekEntry = monthEntry?.weeks.find((w) => w.weekNO === weekNumber);
-		if (weekEntry) {
-			weekEntry.salesUnits = Number(plan.units);
-			weekEntry.salesDollars = salesDollars;
-			weekEntry.costDollars = costDollars;
-			weekEntry.gmDollars = gmDollars;
-			weekEntry.gmPercentage = gmPercentage;
-		}
-	}
-
-	// Convert map to array
-	return Array.from(dataMap.values());
+	return stuctureData(planningData);
 };
