@@ -4,7 +4,9 @@ const prisma = new PrismaClient();
 
 class SkuService {
 	async getAllSKUs() {
-		return prisma.sKU.findMany();
+		return prisma.sKU.findMany({
+			orderBy: [{ id: "asc" }],
+		});
 	}
 
 	async getSKUById(id: string) {
